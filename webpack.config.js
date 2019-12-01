@@ -2,7 +2,7 @@ var path = require('path');
 
 module.exports = {
   devtool: 'source-map',
-  entry: './src/day1.js',
+  entry: './src/day1.ts',
   module: {
     rules: [
       {
