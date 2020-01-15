@@ -16,8 +16,8 @@ const permute = (permArr, usedChars, input) => {
   return permArr;
 };
 
-const part1 = content => {
-  const testProgram = content[0].split(',').map(n => parseInt(n, 10));
+const part1 = (content) => {
+  const testProgram = content[0].split(',').map((n) => parseInt(n, 10));
 
   const permArr = [];
   const usedChars = [];
@@ -109,9 +109,128 @@ const part1 = content => {
   return maxSignal;
 };
 
+const part2 = (content) => {
+  const testProgram = content[0].split(',').map((n) => parseInt(n, 10));
+
+  const permArr = [];
+  const usedChars = [];
+
+  const phaseSettings = permute(permArr, usedChars, [5, 6, 7, 8, 9]);
+  const thrusterSignals = [];
+
+  for (const phaseSetting of phaseSettings) {
+    let input = 0;
+    let amplifierId = 0;
+    let finished = false;
+    const programMemoriesPointers = [];
+    const programMemories = [];
+    const isFirstLoop = []; // for each amp
+
+    // initialize programs of the 5 amplifiers
+    for (let i = 0; i < 5; i++) {
+      programMemories.push([...testProgram]);
+      isFirstLoop.push(true);
+    }
+
+    while (!finished) {
+      let pointer =
+        programMemoriesPointers[amplifierId] === undefined
+          ? 0
+          : programMemoriesPointers[amplifierId];
+      const memory = programMemories[amplifierId];
+
+      // the program exits the loop when it encounters the halt code (9)
+      while (true) {
+        let operation = memory[pointer];
+        if (operation === 99) {
+          finished = true;
+          break;
+        } else if (operation === 3) {
+          // takes input as value to save it
+          // first it takes the phaseSetting as value, then the inputs from initial value or
+          // from outputs of the previous amplifier
+          memory[memory[pointer + 1]] = isFirstLoop[amplifierId]
+            ? phaseSetting[amplifierId]
+            : input;
+          isFirstLoop[amplifierId] = false;
+          pointer += 2;
+        } else {
+          operation = operation.toString().split('');
+          let intcode;
+          let firstMode = 0;
+          let secondMode = 0;
+
+          for (let i = operation.length - 1; i >= 0; i--) {
+            if (i === operation.length - 1) {
+              intcode = operation[i];
+              if (intcode === '9') {
+                finished = true;
+                break;
+              }
+            } else if (i === operation.length - 3) {
+              firstMode = parseInt(operation[i], 10);
+            } else if (i === operation.length - 4) {
+              secondMode = parseInt(operation[i], 10);
+            }
+          }
+
+          const firstVal = firstMode
+            ? memory[pointer + 1]
+            : memory[memory[pointer + 1]];
+          const secondVal = secondMode
+            ? memory[pointer + 2]
+            : memory[memory[pointer + 2]];
+
+          if (intcode === '1') {
+            memory[memory[pointer + 3]] = firstVal + secondVal;
+            pointer += 4;
+          } else if (intcode === '2') {
+            memory[memory[pointer + 3]] = firstVal * secondVal;
+            pointer += 4;
+          } else if (intcode === '4') {
+            // saves value as input
+            input = firstVal;
+            pointer += 2;
+            // go to next amplifier
+            programMemoriesPointers[amplifierId] = pointer;
+            amplifierId = amplifierId === 4 ? 0 : amplifierId + 1;
+            break;
+          } else if (intcode === '5') {
+            if (firstVal) {
+              pointer = secondVal;
+              continue;
+            }
+            pointer += 3;
+          } else if (intcode === '6') {
+            if (!firstVal) {
+              pointer = secondVal;
+              continue;
+            }
+            pointer += 3;
+          } else if (intcode === '7') {
+            memory[memory[pointer + 3]] = firstVal < secondVal ? 1 : 0;
+            pointer += 4;
+          } else if (intcode === '8') {
+            memory[memory[pointer + 3]] = firstVal === secondVal ? 1 : 0;
+            pointer += 4;
+          }
+        }
+      }
+    }
+    thrusterSignals.push(input);
+  }
+
+  const maxSignal = thrusterSignals.reduce(
+    (max, value) => (max < value ? value : max),
+    0
+  );
+  return maxSignal;
+};
+
 (() => {
   const args = process.argv.slice(2);
   const filePath = args[0] || 'day7.txt';
   const content = parseFile(filePath);
   console.log(`part1: ${part1(content)}`);
+  console.log(`part2: ${part2(content)}`);
 })();
